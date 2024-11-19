@@ -1,4 +1,5 @@
 #include <sil/sil.hpp>
+#include <cmath>
 #include "random.hpp"
 
 void makeItGreen(sil::Image& image){
@@ -234,20 +235,110 @@ sil::Image animation() {
 }
 
 void rosace(sil::Image& image, int thickness) {
+    int rayon = 100;
+    double angle = M_PI / 3; 
 
-    int rayon = 50;
-    int x_centre = image.width()/2;
-    int y_centre = image.height()/2;
+    int x_centre = image.width() / 2;
+    int y_centre = image.height() / 2;
 
     for (int x = 0; x < image.width(); x++) {
         for (int y = 0; y < image.height(); y++) {
-            if((x - x_centre) * (x - x_centre) + (y - y_centre) * (y - y_centre) >= (rayon * rayon)-(thickness*thickness) && (x - x_centre) * (x - x_centre) + (y - y_centre) * (y - y_centre) <= (rayon * rayon) ){
-                image.pixel(x,y)={0,0,0};
-            } else {
+            bool condition = (x - x_centre) * (x - x_centre) + (y - y_centre) * (y - y_centre) >= (rayon * rayon)-(thickness*thickness) && (x - x_centre) * (x - x_centre) + (y - y_centre) * (y - y_centre) <= (rayon * rayon);
+            if(condition){
                 image.pixel(x,y)={1,1,1};
+            } else {
+                for(int i = 0; i <7; i++){
+                    int new_x_centre = x_centre+rayon * std::cos(i * angle) ;
+                    int new_y_centre = y_centre+rayon * std::sin(i * angle) ;
+
+                    bool condition = (x - new_x_centre) * (x - new_x_centre) + (y - new_y_centre) * (y - new_y_centre) >= (rayon * rayon) - (thickness * thickness) &&
+                                    (x - new_x_centre) * (x - new_x_centre) + (y - new_y_centre) * (y - new_y_centre) <= (rayon * rayon);
+
+                    if(condition){
+                       image.pixel(x,y)={1,1,1}; 
+                    }
+
+                }
             }
         }
     }
+}
+
+
+void mosaique(sil::Image& image, int coef) {
+
+    sil::Image new_image{image.width(), image.height() };
+
+    //Pour avoir la dimension d'une dimension
+    //de la dalle
+    int width = image.width() / coef;
+    int height = image.height() / coef;
+
+
+        for (int x = 0; x < image.width(); x++) {
+            for (int y = 0; y < image.height(); y++) {
+                // Index local de la dalle
+                int x2 = x % width;
+                int y2 = y % height;
+
+
+                new_image.pixel(x,y) = image.pixel(x2*coef, y2*coef);
+            }
+        }
+    
+    
+    image=new_image;
+}
+
+
+void mosaiqueMiroir(sil::Image& image, int coef) {
+    sil::Image new_image{image.width(), image.height()};
+
+    int width = image.width() / coef;
+    int height = image.height() / coef;
+
+    int counterX {0};
+    int counterY{0};
+
+    for (int x = 0; x < image.width(); x++) {
+        for (int y = 0; y < image.height(); y++) {
+
+            int x2 = x % width;
+            int y2 = y % height;
+            
+            if (counterX % 2 == 0 && counterY%2 == 0) {
+                new_image.pixel(x, y) = image.pixel(x2 * coef, y2 * coef);
+            }
+
+            else if (counterX %2 != 0 && counterY%2 == 0) {
+                int mirror_x = (width - 1 - x2) * coef;  
+                int mirror_y = y2 * coef;  
+                new_image.pixel(x, y) = image.pixel(mirror_x, mirror_y);
+            }
+            
+            else if (counterX %2 == 0 && counterY%2 != 0){
+                int mirror_x = x2*coef; 
+                int mirror_y = (height - 1 - y2) * coef;  
+                new_image.pixel(x, y) = image.pixel(mirror_x, mirror_y);
+            }
+            
+            else {
+                int mirror_x = (width - 1 - x2) * coef;  
+                int mirror_y = (height - 1 - y2) * coef; 
+                new_image.pixel(x, y) = image.pixel(mirror_x, mirror_y);
+            }
+
+            if (y == height - 1) {
+                counterY++;
+            }
+
+            if(x == width - 1){
+                counterX++;
+            }
+        }
+    }
+
+    image = new_image;
 }
 
 
@@ -329,9 +420,15 @@ int main()
         sil::Image image{animation()};
     }
     {
-        sil::Image image{500, 500};
-        rosace(image,15);
-        image.save("output/rosace.png");
+        sil::Image image{"images/logo.png"};
+        mosaique(image,4);
+        image.save("output/mosaique.png");
+    }
+
+    {
+        sil::Image image{"images/logo.png"};
+        mosaiqueMiroir(image,5);
+        image.save("output/mosaiquemiroir.png");
     }
     
 }
