@@ -1,5 +1,6 @@
 #include <sil/sil.hpp>
 #include <cmath>
+#include <complex>
 #include "random.hpp"
 
 void makeItGreen(sil::Image& image){
@@ -301,45 +302,233 @@ void mosaiqueMiroir(sil::Image& image, int coef) {
     int counterY{0};
 
     for (int x = 0; x < image.width(); x++) {
+        
+        int x2 = x % width;
+
         for (int y = 0; y < image.height(); y++) {
 
-            int x2 = x % width;
             int y2 = y % height;
             
-            if (counterX % 2 == 0 && counterY%2 == 0) {
-                new_image.pixel(x, y) = image.pixel(x2 * coef, y2 * coef);
+            int real_x = x2 * coef;
+            if (counterX % 2 == 1) {
+                real_x = (width - 1 - x2) * coef;
             }
 
-            else if (counterX %2 != 0 && counterY%2 == 0) {
-                int mirror_x = (width - 1 - x2) * coef;  
-                int mirror_y = y2 * coef;  
-                new_image.pixel(x, y) = image.pixel(mirror_x, mirror_y);
-            }
-            
-            else if (counterX %2 == 0 && counterY%2 != 0){
-                int mirror_x = x2*coef; 
-                int mirror_y = (height - 1 - y2) * coef;  
-                new_image.pixel(x, y) = image.pixel(mirror_x, mirror_y);
-            }
-            
-            else {
-                int mirror_x = (width - 1 - x2) * coef;  
-                int mirror_y = (height - 1 - y2) * coef; 
-                new_image.pixel(x, y) = image.pixel(mirror_x, mirror_y);
+            int real_y = y2 * coef;
+            if(counterY % 2 == 1){
+                real_y = (height - 1 - y2) * coef;
             }
 
-            if (y == height - 1) {
+
+            new_image.pixel(x, y) = image.pixel(real_x, real_y);
+
+            if (y2 == height - 1) {
                 counterY++;
             }
 
-            if(x == width - 1){
-                counterX++;
-            }
         }
+            counterY  = 0;
+            if(x2 == width - 1){
+            counterX++;
+            }
     }
 
     image = new_image;
 }
+
+void glitch(sil::Image& image) {
+
+    int width = image.width();
+    int height = image.height();
+
+    for (int i = 0; i < 100; i++)
+    {
+        //taille du rect
+        int widthRect = random_int(10, 30);
+        int heightRect = random_int(3, 10);
+
+        //position max de X et Y
+        int maxX = width - widthRect;
+        int maxY = height - heightRect;
+
+        //def du point de rect1
+        int x1 = random_int(0, maxX);
+        int y1 = random_int(0, maxY);
+
+        //def du point de rect2
+        int x2 = random_int(0, maxX);
+        int y2 = random_int(0, maxY); 
+
+        //rectangle 1
+        sil::Image rect1 {widthRect,heightRect};
+        //remplissage du rect1
+        for (int i = 0; i < heightRect; i++)
+        {
+            for (int j = 0; j < widthRect; j++)
+            {
+                rect1.pixel(j,i) = image.pixel(x1 + j, y1 + i);
+            }
+            
+        }
+
+        //rectangle 2
+        sil::Image rect2 {widthRect,heightRect};
+        //remplissage du rect2
+        for (int i = 0; i < heightRect; i++)
+        {
+            for (int j = 0; j < widthRect; j++)
+            {
+                rect2.pixel(j,i) = image.pixel(x2 + j, y2 + i);
+            }
+            
+        }
+
+        for (int i = 0; i < heightRect; i++)
+        {
+            for (int j = 0; j < widthRect; j++)
+            {
+                image.pixel(x1 + j,y1 + i)=rect2.pixel(j,i);
+                image.pixel(x2 + j,y2 + i)=rect1.pixel(j,i);
+                
+            }
+            
+        }
+        
+        }
+
+}
+
+struct Lab {float L; float a; float b;};
+struct RGB {float r; float g; float b;};
+
+Lab linear_srgb_to_oklab(RGB c) 
+{
+    float l = 0.4122214708f * c.r + 0.5363325363f * c.g + 0.0514459929f * c.b;
+	float m = 0.2119034982f * c.r + 0.6806995451f * c.g + 0.1073969566f * c.b;
+	float s = 0.0883024619f * c.r + 0.2817188376f * c.g + 0.6299787005f * c.b;
+
+    float l_ = cbrtf(l);
+    float m_ = cbrtf(m);
+    float s_ = cbrtf(s);
+
+    return {
+        0.2104542553f*l_ + 0.7936177850f*m_ - 0.0040720468f*s_,
+        1.9779984951f*l_ - 2.4285922050f*m_ + 0.4505937099f*s_,
+        0.0259040371f*l_ + 0.7827717662f*m_ - 0.8086757660f*s_,
+    };
+}
+
+RGB oklab_to_linear_srgb(Lab c) 
+{
+    float l_ = c.L + 0.3963377774f * c.a + 0.2158037573f * c.b;
+    float m_ = c.L - 0.1055613458f * c.a - 0.0638541728f * c.b;
+    float s_ = c.L - 0.0894841775f * c.a - 1.2914855480f * c.b;
+
+    float l = l_*l_*l_;
+    float m = m_*m_*m_;
+    float s = s_*s_*s_;
+
+    return {
+		+4.0767416621f * l - 3.3077115913f * m + 0.2309699292f * s,
+		-1.2684380046f * l + 2.6097574011f * m - 0.3413193965f * s,
+		-0.0041960863f * l - 0.7034186147f * m + 1.7076147010f * s,
+    };
+}
+
+void colorGradient(sil::Image& image){
+
+RGB color1 = {0.9f, 0.6f, 0.2f};
+RGB color2 = {0.2f, 0.5f, 0.5f};
+
+//RGB TO OKLAB
+Lab labColor1 = linear_srgb_to_oklab(color1);
+Lab labColor2 = linear_srgb_to_oklab(color2);
+
+// float r1 = 0.9f;
+// float r2 = 0.2f;
+
+// float g1 = 0.1f;
+// float g2 = 0.5f;
+
+// float b1 = 0.2f;
+// float b2 = 0.5f;
+
+// glm::vec3 color1 = {r1,g1,b1};
+// glm::vec3 color2 = {r2,g2,b2};
+
+//coef
+float coef_step = 1.0f / image.width();
+float coef = 0.0f;
+
+    for (int x = 0; x < image.width(); x++) {
+        for (int y = 0; y < image.height(); y++) {
+            // Mélange dans l'espace Oklab
+            Lab mixedLab = {
+                labColor1.L + coef * (labColor2.L - labColor1.L),
+                labColor1.a + coef * (labColor2.a - labColor1.a),
+                labColor1.b + coef * (labColor2.b - labColor1.b),
+            };
+
+            // Conversion en sRGB linéaire
+            RGB mixedRGB = oklab_to_linear_srgb(mixedLab);
+
+            // Affectation du pixel (assurez-vous que les valeurs sont dans [0, 1])
+            image.pixel(x, y) = glm::vec3(
+                std::clamp(mixedRGB.r, 0.0f, 1.0f),
+                std::clamp(mixedRGB.g, 0.0f, 1.0f),
+                std::clamp(mixedRGB.b, 0.0f, 1.0f)
+            );
+        }
+
+        // Incrémenter le coefficient pour la prochaine colonne
+        coef += coef_step;
+    }
+}
+
+void fractale(sil::Image& image) {
+
+    int width = image.width();
+    int height = image.height();
+
+    for (int px = 0; px < width; px++) {
+        for (int py = 0; py < height; py++) {
+        
+
+        float x = (px / (float)width) * 4.0f - 2.0f;  // Maps to [-2, 2]
+        float y = (py / (float)height) * 4.0f - 2.0f;
+
+            std::complex<float> c = {x, y};
+            std::complex<float> z = {0, 0};
+
+            int counter = 0;
+
+            while (std::abs(z) <= 2.0f && counter < 1000) {
+            z = z * z + c;
+            counter++;
+}
+
+            float intensity = counter / 10.0f;
+            image.pixel(px, py) = {intensity, intensity, intensity};  // Échelle de gris
+
+            }
+        }
+    }
+
+    void tramage(sil::Image& image) {
+
+        int width = image.width();
+        int height = image.height();
+        
+
+        for (int x = 0; x < image.width(); x++) {
+            for (int y = 0; y < image.height(); y++) {
+                
+            }
+        }
+    }
+
+
+
 
 
 int main()
@@ -430,5 +619,30 @@ int main()
         mosaiqueMiroir(image,5);
         image.save("output/mosaiquemiroir.png");
     }
+
+    {
+        sil::Image image{"images/logo.png"};
+        glitch(image);
+        image.save("output/glitch.png");
+    }
+
+    {
+        sil::Image image{300, 200};
+        colorGradient(image);
+        image.save("output/colorgradient.png");  
+    }
+
+    {
+        sil::Image image{500, 500};
+        fractale(image);
+        image.save("output/fractale.png");  
+    }
+
+    {
+        sil::Image image{"images/photo.jpg"};
+        tramage(image);
+        image.save("output/tramage.jpg");  
+    }
+
     
 }
