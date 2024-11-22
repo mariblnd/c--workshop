@@ -1,6 +1,7 @@
 #include <sil/sil.hpp>
 #include <cmath>
 #include <complex>
+#include <glm/gtx/matrix_transform_2d.hpp>
 #include "random.hpp"
 
 void makeItGreen(sil::Image& image){
@@ -588,18 +589,46 @@ void fractale(sil::Image& image) {
     }
 }
 
+glm::vec2 rotated(glm::vec2 point, glm::vec2 center_of_rotation, float angle)
+{
+    return glm::vec2{glm::rotate(glm::mat3{1.f}, angle) * glm::vec3{point - center_of_rotation, 0.f}} + center_of_rotation;
+}
 
 void vortex(sil::Image& image) {
 
     int width = image.width();
     int height = image.height();
+    float base_angle = 20.0f;
 
-    for (int x = 0; x < image.width(); x++) {
-        for (int y = 0; y < image.height(); y++) {
+    glm::vec2 center_of_rotation(width / 2.0f, height / 2.0f);
+
+    //Distance maximale entre le centre et l'extrémité
+    float max_distance = glm::distance(center_of_rotation, glm::vec2(0, 0));
+
+
+    for (int x = 0; x < width; x++) {
+        for (int y = 0; y < height; y++) {
             
+            glm::vec2 current_point(x, y);
+
+            //Calcul de la distance par rapport au centre de rotation
+            float distance = glm::distance(center_of_rotation, current_point);
+
+            //Calcul de l'angle proportionnel à la distance
+            float angle = base_angle * (distance / max_distance);
+
+            //Rotation du point
+            glm::vec2 new_point = rotated(current_point, center_of_rotation, angle);
+
+            // Vérification des limites pour éviter des dépassements
+            if (new_point.x >= 0 && new_point.x < width && new_point.y >= 0 && new_point.y < height) {
+                glm::vec3 color = image.pixel(new_point.x, new_point.y); 
+                image.pixel(x, y) = color;
+            }
         }
     }
 }
+
 
 
 
@@ -663,7 +692,7 @@ int main()
 
     {
         sil::Image image{"images/photo.jpg"};
-        brightness(image, 0.1f);
+        brightness(image, 1.2f);
         image.save("output/brightness.jpg");
     }
 
@@ -720,6 +749,12 @@ int main()
         sil::Image image{"images/photo_faible_contraste.jpg"};
         normalisation(image);
         image.save("output/normalisation.jpg");  
+    }
+
+    {
+        sil::Image image{"images/logo.png"};
+        vortex(image);
+        image.save("output/vortex.png");  
     }
 
     
