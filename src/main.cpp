@@ -249,7 +249,7 @@ void rosace(sil::Image& image, int thickness) {
             if(condition){
                 image.pixel(x,y)={1,1,1};
             } else {
-                for(int i = 0; i <7; i++){
+                for(int i = 0; i <6; i++){
                     int new_x_centre = x_centre+rayon * std::cos(i * angle) ;
                     int new_y_centre = y_centre+rayon * std::sin(i * angle) ;
 
@@ -279,7 +279,7 @@ void mosaique(sil::Image& image, int coef) {
 
         for (int x = 0; x < image.width(); x++) {
             for (int y = 0; y < image.height(); y++) {
-                // Index local de la dalle
+                //Permet de d'assurer que x et y soit bien cadré
                 int x2 = x % width;
                 int y2 = y % height;
 
@@ -506,10 +506,10 @@ void fractale(sil::Image& image) {
             while (std::abs(z) <= 2.0f && counter < 1000) {
             z = z * z + c;
             counter++;
-}
+            }
 
-            float intensity = counter / 10.0f;
-            image.pixel(px, py) = {intensity, intensity, intensity};  // Échelle de gris
+            float intensity = counter / 1000.0f;
+            image.pixel(px, py) = {intensity, intensity, intensity}; 
 
             }
         }
@@ -569,10 +569,6 @@ void fractale(sil::Image& image) {
             maxLum = std::max(maxLum, luminosite);
             minLum = std::min(minLum, luminosite);
         }
-    }
-
-    if (maxLum == minLum) {
-        return;
     }
 
     // Normaliser les pixels
