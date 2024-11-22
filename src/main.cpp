@@ -516,6 +516,14 @@ void fractale(sil::Image& image) {
 
     void tramage(sil::Image& image) {
 
+        const int bayer_n = 4;
+        float bayer_matrix_4x4[][bayer_n] = {
+            {    -0.5,       0,  -0.375,   0.125 },
+            {    0.25,   -0.25,   0.375, - 0.125 },
+            { -0.3125,  0.1875, -0.4375,  0.0625 },
+            {  0.4375, -0.0625,  0.3125, -0.1875 },
+        };
+
         int width = image.width();
         int height = image.height();
         
@@ -523,10 +531,75 @@ void fractale(sil::Image& image) {
         for (int x = 0; x < image.width(); x++) {
             for (int y = 0; y < image.height(); y++) {
                 
+                glm::vec3 input_color = image.pixel(x,y);
+                float r = 1.0f;
+                glm::vec3 output_color = input_color + bayer_matrix_4x4[y % bayer_n][x % bayer_n];
+
+                float red = output_color.r;
+                float green = output_color.g;
+                float blue = output_color.b;
+
+                float luminosite = (red+green+blue)/3;
+
+
+                if(luminosite>0.5){
+                    image.pixel(x,y)={1,1,1};
+                } else {
+                    image.pixel(x,y)={0,0,0};
+                }
+
             }
         }
     }
 
+   void normalisation(sil::Image& image) {
+    int width = image.width();
+    int height = image.height();
+
+    float maxLum = 0.0f;
+    float minLum = 255.0f;
+
+    // Calculer la luminosité minimale et maximale
+    for (int x = 0; x < width; x++) {
+        for (int y = 0; y < height; y++) {
+            glm::vec3 pixel = image.pixel(x, y);
+            float luminosite = (pixel.r + pixel.g + pixel.b) / 3.0f;
+
+            maxLum = std::max(maxLum, luminosite);
+            minLum = std::min(minLum, luminosite);
+        }
+    }
+
+    if (maxLum == minLum) {
+        return;
+    }
+
+    // Normaliser les pixels
+    for (int x = 0; x < width; x++) {
+        for (int y = 0; y < height; y++) {
+            glm::vec3 pixel = image.pixel(x, y);
+
+            pixel.r = (pixel.r - minLum) / (maxLum - minLum) ;
+            pixel.g = (pixel.g - minLum) / (maxLum - minLum) ;
+            pixel.b = (pixel.b - minLum) / (maxLum - minLum) ;
+
+            image.pixel(x, y) = glm::clamp(pixel, glm::vec3(0.0f), glm::vec3(255.0f));
+        }
+    }
+}
+
+
+void vortex(sil::Image& image) {
+
+    int width = image.width();
+    int height = image.height();
+
+    for (int x = 0; x < image.width(); x++) {
+        for (int y = 0; y < image.height(); y++) {
+            
+        }
+    }
+}
 
 
 
@@ -642,6 +715,11 @@ int main()
         sil::Image image{"images/photo.jpg"};
         tramage(image);
         image.save("output/tramage.jpg");  
+    }
+    {
+        sil::Image image{"images/photo_faible_contraste.jpg"};
+        normalisation(image);
+        image.save("output/normalisation.jpg");  
     }
 
     
